@@ -1,0 +1,78 @@
+/**
+ * Main React Application Component
+ * Routes and global state management
+ */
+
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import './App.css';
+
+// Components
+import Navbar from './components/Common/Navbar';
+import CustomerList from './components/Customers/CustomerList';
+import CustomerDetail from './components/Customers/CustomerDetail';
+import CustomerForm from './components/Customers/CustomerForm';
+
+// Context
+import { CustomerContext } from './context/CustomerContext';
+
+// Services
+import { getAllCustomers } from './services/customerService';
+
+function App() {
+  const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Refresh data function
+  const refreshData = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
+
+  // Load customers on mount and refresh
+  useEffect(() => {
+    loadCustomers();
+  }, [refreshTrigger]);
+
+  const loadCustomers = async () => {
+    try {
+      setLoading(true);
+      const data = await getAllCustomers({ page: 1, pageSize: 50 });
+      setCustomers(data.items || []);
+      setError(null);
+    } catch (err) {
+      console.error('Failed to load customers:', err);
+      setError('Failed to load customers. Please check your connection.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <CustomerContext.Provider value={{ customers, refreshData, loading }}>
+      <Router>
+        <div className="app">
+          <Navbar />
+          <main className="main-content">
+            {error && (
+              <div className="error-banner">
+                {error}
+                <button onClick={loadCustomers}>Retry</button>
+              </div>
+            )}
+            <Routes>
+              <Route path="/" element={<Navigate to="/customers" />} />
+              <Route path="/customers" element={<CustomerList />} />
+              <Route path="/customers/new" element={<CustomerForm />} />
+              <Route path="/customers/:id" element={<CustomerDetail />} />
+              <Route path="/customers/:id/edit" element={<CustomerForm />} />
+            </Routes>
+          </main>
+        </div>
+      </Router>
+    </CustomerContext.Provider>
+  );
+}
+
+export default App;
